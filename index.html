@@ -258,17 +258,24 @@ function submitAll(){
 }
 
 // ===== DASHBOARD =====
-function ddmmyyyy(dateInputVal){
-  const [y,m,d] = dateInputVal.split('-');
-  return d+"/"+m+"/"+y;
+function normalizeDate(val){
+  // val could be "dd/mm/yyyy", "yyyy-mm-dd", or ISO datetime from Sheets
+  if(val instanceof Date) val = val.toISOString();
+  val = String(val).trim();
+  if(val.includes('/')){
+    const [d,m,y] = val.split('/');
+    return y+"-"+m.padStart(2,'0')+"-"+d.padStart(2,'0');
+  }
+  if(val.includes('T')) val = val.split('T')[0];
+  return val; // already yyyy-mm-dd
 }
 
 function loadData(){
   if(SCRIPT_URL.includes("PASTE_")) return;
-  const filterDate = ddmmyyyy(document.getElementById('filterDate').value);
+  const filterDate = document.getElementById('filterDate').value; // yyyy-mm-dd
 
   fetch(SCRIPT_URL).then(r=>r.json()).then(data=>{
-    const filtered = data.filter(row => String(row.Date) === filterDate);
+    const filtered = data.filter(row => normalizeDate(row.Date) === filterDate);
 
     const totals = {};
     filtered.forEach(row=>{
