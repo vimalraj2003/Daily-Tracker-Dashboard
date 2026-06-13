@@ -47,12 +47,52 @@
   .bar-label{width:110px; font-size:0.8rem; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .bar-track{flex:1; background:#11141a; border-radius:4px; height:18px; overflow:hidden;}
   .bar-fill{height:100%; background:var(--accent); display:flex; align-items:center; padding-left:6px; font-size:0.75rem; color:#111; font-weight:bold; white-space:nowrap;}
+
+  /* PROJECTOR DASHBOARD */
+  .dash-header{display:flex; align-items:flex-end; gap:16px; margin-bottom:16px; flex-wrap:wrap;}
+  .live-clock{margin-left:auto; font-size:1.8rem; font-weight:bold; color:var(--accent); letter-spacing:1px;}
+
+
+  .hourly-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px;}
+  .hour-cell{
+    background:#11141a; border:1px solid #2a2e37; border-radius:10px; padding:12px; text-align:center;
+  }
+  .hour-cell.current{border-color:var(--accent); background:rgba(245,166,35,0.12);}
+  .hour-cell .hour-label{font-size:0.9rem; color:var(--muted); margin-bottom:8px; font-weight:bold;}
+  .hour-cell .role-row{display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;}
+  .hour-cell .role-row .role-name{font-size:0.85rem; color:var(--muted);}
+  .hour-cell .role-row .role-count{font-size:1.6rem; font-weight:bold;}
+  .hour-cell .role-row.picker .role-count{color:#4caf50;}
+  .hour-cell .role-row.packer .role-count{color:var(--accent);}
+  .hour-cell.current .hour-label{color:var(--accent);}
+
+  /* COMPARISON GRID */
+  .compare-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:12px;}
+  .compare-cell{
+    background:#11141a; border:1px solid #2a2e37; border-radius:10px; padding:12px; text-align:center;
+  }
+  .compare-cell.current{border-color:var(--accent); background:rgba(245,166,35,0.12);}
+  .compare-cell .hour-label{font-size:0.9rem; color:var(--muted); margin-bottom:8px; font-weight:bold;}
+  .compare-cell.current .hour-label{color:var(--accent);}
+  .compare-vals{display:flex; justify-content:space-around; align-items:baseline; margin-bottom:6px;}
+  .compare-vals .today-val{font-size:1.8rem; font-weight:bold;}
+  .compare-vals .yesterday-val{font-size:1.1rem; color:var(--muted);}
+  .compare-delta{font-size:0.85rem; font-weight:bold;}
+  .compare-delta.up{color:var(--green);}
+  .compare-delta.down{color:var(--red);}
+  .compare-delta.flat{color:var(--muted);}
+  .compare-summary{display:flex; justify-content:center; gap:32px; margin-bottom:14px; flex-wrap:wrap;}
+  .summary-box{text-align:center;}
+  .summary-box .summary-label{font-size:0.85rem; color:var(--muted); margin-bottom:4px;}
+  .summary-box .summary-val{font-size:2.2rem; font-weight:bold;}
+  .summary-box .summary-val.today{color:var(--accent);}
+  .summary-box .summary-val.yesterday{color:var(--muted);}
 </style>
 </head>
 <body>
 
 <h1>Warehouse Hourly Tracker</h1>
-<div class="small">Shrus / Majorrangas — Picking & Packing</div>
+<div class="small">Shrus — Picking & Packing</div>
 
 <div class="tabs">
   <div class="tab active" data-tab="entry">Log Entry</div>
@@ -80,6 +120,9 @@
       <div style="align-self:flex-end;">
         <button class="secondary" onclick="addRow()">+ Add Worker Row</button>
       </div>
+      <div style="align-self:flex-end;">
+        <button class="secondary" onclick="testAlarm()">🔊 Test Alarm</button>
+      </div>
     </div>
 
     <div class="grid-wrap">
@@ -105,37 +148,29 @@
 
 <!-- DASHBOARD -->
 <div class="panel" id="dashboard">
-  <div class="card">
-    <label>Filter by Date</label>
-    <input type="date" id="filterDate">
+  <div class="dash-header">
+    <div>
+      <label>Filter by Date</label>
+      <input type="date" id="filterDate">
+    </div>
     <button onclick="loadData()">Refresh</button>
+    <div class="live-clock" id="liveClock"></div>
   </div>
 
   <div class="card">
-    <h3 style="margin-top:0">Today's Totals</h3>
-    <table>
-      <thead><tr><th>Worker</th><th>Role</th><th>Total</th></tr></thead>
-      <tbody id="totalsBody"></tbody>
-    </table>
+    <h3 style="margin-top:0">Hourly Picking & Packing Count</h3>
+    <div id="hourlyGrid"></div>
   </div>
 
   <div class="card">
-    <h3 style="margin-top:0">Performance Comparison (Total Count)</h3>
-    <div id="barChart"></div>
-  </div>
-
-  <div class="card">
-    <h3 style="margin-top:0">Hourly Detail</h3>
-    <table>
-      <thead><tr><th>Hour</th><th>Worker</th><th>Role</th><th>Count</th></tr></thead>
-      <tbody id="detailBody"></tbody>
-    </table>
+    <h3 style="margin-top:0">Today vs Previous Day — Total Output</h3>
+    <div id="compareGrid"></div>
   </div>
 </div>
 
 <script>
 // === CONFIG ===
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzV2XtP5rBlWxwFi-sHLP8nwGcfwUMhNNDojnG8DdK25_13M6F9BUmnZsJ55-asqJLVoA/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQErQMXtrqEJNh4eu9xaXTX3U1_s4vKVezTHS_gcBrB8I9WC-gHFbSzZclux8B3kGyyQ/exec";
 
 // tab switching
 document.querySelectorAll('.tab').forEach(tab=>{
@@ -193,6 +228,113 @@ function initGrid(){
   }
 }
 initGrid();
+
+// Disable hour slots whose end time + 10 min grace period has passed
+function updateHourSlotAvailability(){
+  const hourSelect = document.getElementById('hour');
+  const slots = [
+    {label:"08:30-09:30", endH:9, endM:30},
+    {label:"09:30-10:30", endH:10, endM:30},
+    {label:"10:30-11:30", endH:11, endM:30},
+    {label:"11:30-12:30", endH:12, endM:30},
+    {label:"12:30-13:30", endH:13, endM:30},
+    {label:"13:30-14:30", endH:14, endM:30},
+    {label:"14:30-15:30", endH:15, endM:30},
+    {label:"15:30-16:30", endH:16, endM:30},
+    {label:"16:30-17:30", endH:17, endM:30},
+  ];
+  const now = new Date();
+  let firstEnabledValue = null;
+
+  Array.from(hourSelect.options).forEach((opt, i)=>{
+    const slot = slots[i];
+    const cutoff = new Date(now);
+    cutoff.setHours(slot.endH, slot.endM + 10, 0, 0); // end time + 10 min grace
+    const expired = now > cutoff;
+    opt.disabled = expired;
+    if(!expired && firstEnabledValue === null){
+      firstEnabledValue = opt.value;
+    }
+  });
+
+  // If currently selected option is now disabled, jump to first available one
+  if(hourSelect.options[hourSelect.selectedIndex].disabled && firstEnabledValue){
+    hourSelect.value = firstEnabledValue;
+  }
+}
+updateHourSlotAvailability();
+setInterval(updateHourSlotAvailability, 60000); // recheck every minute
+
+// ===== ALARM SYSTEM =====
+// Plays a beep at the start of each hour slot, and again 10 min before
+// the entry window closes (i.e. at the slot's end time) as a reminder.
+function playBeep(times=1){
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  let t = ctx.currentTime;
+  for(let i=0;i<times;i++){
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.5, t+0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t+0.4);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t+0.45);
+    t += 0.55;
+  }
+}
+
+// Test button: plays the "slot start" alarm (2 beeps) so staff can confirm sound works
+function testAlarm(){
+  playBeep(2);
+}
+
+const ALARM_SLOT_BOUNDS = [
+  {start:"08:30", end:"09:30"},
+  {start:"09:30", end:"10:30"},
+  {start:"10:30", end:"11:30"},
+  {start:"11:30", end:"12:30"},
+  {start:"12:30", end:"13:30"},
+  {start:"13:30", end:"14:30"},
+  {start:"14:30", end:"15:30"},
+  {start:"15:30", end:"16:30"},
+  {start:"16:30", end:"17:30"},
+];
+
+let lastAlarmKey = localStorage.getItem('lastAlarmKey') || '';
+
+function checkAlarms(){
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const nowStr = hh+":"+mm;
+
+  ALARM_SLOT_BOUNDS.forEach(b=>{
+    // new hour slot started -> 2 beeps
+    if(nowStr === b.start){
+      const key = 'start-'+b.start;
+      if(lastAlarmKey !== key){
+        playBeep(2);
+        lastAlarmKey = key;
+        localStorage.setItem('lastAlarmKey', key);
+      }
+    }
+    // slot ended -> 10 min reminder to finish entry, 3 beeps
+    if(nowStr === b.end){
+      const key = 'end-'+b.end;
+      if(lastAlarmKey !== key){
+        playBeep(3);
+        lastAlarmKey = key;
+        localStorage.setItem('lastAlarmKey', key);
+      }
+    }
+  });
+}
+setInterval(checkAlarms, 30000); // check twice a minute
+checkAlarms();
 
 function submitAll(){
   const msg = document.getElementById('msg');
@@ -278,8 +420,6 @@ function normalizeDate(val){
 function loadData(){
   if(SCRIPT_URL.includes("PASTE_")) return;
 
-  document.getElementById('totalsBody').innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
-
   // remove any previous jsonp script tag
   const old = document.getElementById('jsonp-script');
   if(old) old.remove();
@@ -292,48 +432,124 @@ function loadData(){
   script.id = 'jsonp-script';
   script.src = SCRIPT_URL + "?callback=__jsonpCallback&t=" + Date.now();
   script.onerror = function(){
-    document.getElementById('totalsBody').innerHTML = '<tr><td colspan="3">Error loading data (check SCRIPT_URL)</td></tr>';
+    document.getElementById('pickerLeaders').innerHTML = '<div class="small">Error loading data (check SCRIPT_URL)</div>';
   };
   document.body.appendChild(script);
+}
+
+const HOUR_SLOTS = [
+  "08:30-09:30","09:30-10:30","10:30-11:30","11:30-12:30","12:30-13:30",
+  "13:30-14:30","14:30-15:30","15:30-16:30","16:30-17:30"
+];
+
+function getCurrentSlot(){
+  const now = new Date();
+  const minutes = now.getHours()*60 + now.getMinutes();
+  for(const slot of HOUR_SLOTS){
+    const [start, end] = slot.split('-');
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const startMin = sh*60+sm, endMin = eh*60+em;
+    if(minutes >= startMin && minutes < endMin) return slot;
+  }
+  return null;
 }
 
 function renderDashboard(data){
   const filterDate = document.getElementById('filterDate').value; // yyyy-mm-dd
   const filtered = data.filter(row => normalizeDate(row.Date) === filterDate);
 
-    const totals = {};
-    filtered.forEach(row=>{
-      const key = row.Worker + "|" + row.Role;
-      totals[key] = (totals[key]||0) + Number(row.Count);
-    });
+  // hourly totals split by role
+  const hourly = {}; // { "08:30-09:30": {Picker: n, Packer: n} }
+  HOUR_SLOTS.forEach(s => hourly[s] = {Picker:0, Packer:0});
+  filtered.forEach(row=>{
+    if(!hourly[row.Hour]) hourly[row.Hour] = {Picker:0, Packer:0};
+    const role = row.Role === 'Packer' ? 'Packer' : 'Picker';
+    hourly[row.Hour][role] += Number(row.Count);
+  });
 
-    const totalsBody = document.getElementById('totalsBody');
-    totalsBody.innerHTML = Object.entries(totals)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([key,val])=>{
-        const [worker,role] = key.split('|');
-        return `<tr><td>${worker}</td><td>${role}</td><td>${val}</td></tr>`;
-      }).join('') || '<tr><td colspan="3">No data for this date</td></tr>';
+  const currentSlot = getCurrentSlot();
+  const hourlyGrid = document.getElementById('hourlyGrid');
+  if(hourlyGrid){
+  hourlyGrid.className = 'hourly-grid';
+  hourlyGrid.innerHTML = HOUR_SLOTS.map(slot=>{
+    const counts = hourly[slot] || {Picker:0, Packer:0};
+    const isCurrent = slot === currentSlot ? ' current' : '';
+    return `<div class="hour-cell${isCurrent}">
+      <div class="hour-label">${slot}</div>
+      <div class="role-row picker"><span class="role-name">Picked</span><span class="role-count">${counts.Picker}</span></div>
+      <div class="role-row packer"><span class="role-name">Packed</span><span class="role-count">${counts.Packer}</span></div>
+    </div>`;
+  }).join('');
+  }
 
-    const maxVal = Math.max(...Object.values(totals), 1);
-    const barChart = document.getElementById('barChart');
-    barChart.innerHTML = Object.entries(totals)
-      .sort((a,b)=>b[1]-a[1])
-      .map(([key,val])=>{
-        const [worker,role] = key.split('|');
-        const pct = (val/maxVal*100).toFixed(0);
-        return `<div class="bar-row">
-          <div class="bar-label">${worker} (${role})</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%">${val}</div></div>
-        </div>`;
-      }).join('') || '<div class="small">No data</div>';
+  // ===== Previous day comparison =====
+  const prevDateObj = new Date(filterDate + "T00:00:00");
+  prevDateObj.setDate(prevDateObj.getDate() - 1);
+  const prevDate = prevDateObj.getFullYear()+"-"+String(prevDateObj.getMonth()+1).padStart(2,'0')+"-"+String(prevDateObj.getDate()).padStart(2,'0');
 
-    const detailBody = document.getElementById('detailBody');
-    detailBody.innerHTML = filtered
-      .sort((a,b)=> String(a.Hour).localeCompare(String(b.Hour)))
-      .map(row=>`<tr><td>${row.Hour}</td><td>${row.Worker}</td><td>${row.Role}</td><td>${row.Count}</td></tr>`)
-      .join('') || '<tr><td colspan="4">No data</td></tr>';
+  const prevFiltered = data.filter(row => normalizeDate(row.Date) === prevDate);
+  const prevHourly = {};
+  HOUR_SLOTS.forEach(s => prevHourly[s] = 0);
+  prevFiltered.forEach(row=>{
+    prevHourly[row.Hour] = (prevHourly[row.Hour]||0) + Number(row.Count);
+  });
+
+  const todayHourlyTotal = {};
+  HOUR_SLOTS.forEach(s => todayHourlyTotal[s] = (hourly[s].Picker + hourly[s].Packer));
+
+  const compareGrid = document.getElementById('compareGrid');
+  if(compareGrid){
+  compareGrid.className = 'compare-grid';
+
+  // overall summary
+  const todaySum = Object.values(todayHourlyTotal).reduce((a,b)=>a+b,0);
+  const prevSum = Object.values(prevHourly).reduce((a,b)=>a+b,0);
+  const diffPct = prevSum > 0 ? Math.round((todaySum-prevSum)/prevSum*100) : (todaySum>0?100:0);
+  const diffClass = diffPct>0?'up':diffPct<0?'down':'flat';
+  const diffSign = diffPct>0?'+':'';
+
+  let html = `<div class="compare-summary">
+    <div class="summary-box"><div class="summary-label">Today Total</div><div class="summary-val today">${todaySum}</div></div>
+    <div class="summary-box"><div class="summary-label">Previous Day Total</div><div class="summary-val yesterday">${prevSum}</div></div>
+    <div class="summary-box"><div class="summary-label">Change</div><div class="summary-val ${diffClass}">${diffSign}${diffPct}%</div></div>
+  </div>`;
+
+  html += HOUR_SLOTS.map(slot=>{
+    const todayVal = todayHourlyTotal[slot];
+    const prevVal = prevHourly[slot] || 0;
+    const delta = todayVal - prevVal;
+    const dClass = delta>0?'up':delta<0?'down':'flat';
+    const arrow = delta>0?'▲':delta<0?'▼':'–';
+    const isCurrent = slot === currentSlot ? ' current' : '';
+    return `<div class="compare-cell${isCurrent}">
+      <div class="hour-label">${slot}</div>
+      <div class="compare-vals">
+        <span class="today-val">${todayVal}</span>
+        <span class="yesterday-val">prev: ${prevVal}</span>
+      </div>
+      <div class="compare-delta ${dClass}">${arrow} ${Math.abs(delta)}</div>
+    </div>`;
+  }).join('');
+
+  compareGrid.innerHTML = html;
+  }
 }
+
+// live clock
+function updateClock(){
+  const el = document.getElementById('liveClock');
+  if(el) el.textContent = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// auto-refresh dashboard every 60s when visible
+setInterval(()=>{
+  if(document.getElementById('dashboard').classList.contains('active')){
+    loadData();
+  }
+}, 60000);
 </script>
 
 </body>
