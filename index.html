@@ -135,7 +135,7 @@
 
 <script>
 // === CONFIG ===
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQErQMXtrqEJNh4eu9xaXTX3U1_s4vKVezTHS_gcBrB8I9WC-gHFbSzZclux8B3kGyyQ/exec";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzmSM5hViVx4lnnzySGvoydutmTXvH_TptzhPNuC7IWq3cp4jsefu_6FRx-V2a79wHeVg/exec";
 
 // tab switching
 document.querySelectorAll('.tab').forEach(tab=>{
@@ -272,10 +272,29 @@ function normalizeDate(val){
 
 function loadData(){
   if(SCRIPT_URL.includes("PASTE_")) return;
-  const filterDate = document.getElementById('filterDate').value; // yyyy-mm-dd
 
-  fetch(SCRIPT_URL).then(r=>r.json()).then(data=>{
-    const filtered = data.filter(row => normalizeDate(row.Date) === filterDate);
+  document.getElementById('totalsBody').innerHTML = '<tr><td colspan="3">Loading...</td></tr>';
+
+  // remove any previous jsonp script tag
+  const old = document.getElementById('jsonp-script');
+  if(old) old.remove();
+
+  window.__jsonpCallback = function(data){
+    renderDashboard(data);
+  };
+
+  const script = document.createElement('script');
+  script.id = 'jsonp-script';
+  script.src = SCRIPT_URL + "?callback=__jsonpCallback&t=" + Date.now();
+  script.onerror = function(){
+    document.getElementById('totalsBody').innerHTML = '<tr><td colspan="3">Error loading data (check SCRIPT_URL)</td></tr>';
+  };
+  document.body.appendChild(script);
+}
+
+function renderDashboard(data){
+  const filterDate = document.getElementById('filterDate').value; // yyyy-mm-dd
+  const filtered = data.filter(row => normalizeDate(row.Date) === filterDate);
 
     const totals = {};
     filtered.forEach(row=>{
@@ -309,9 +328,6 @@ function loadData(){
       .sort((a,b)=> String(a.Hour).localeCompare(String(b.Hour)))
       .map(row=>`<tr><td>${row.Hour}</td><td>${row.Worker}</td><td>${row.Role}</td><td>${row.Count}</td></tr>`)
       .join('') || '<tr><td colspan="4">No data</td></tr>';
-  }).catch(err=>{
-    document.getElementById('totalsBody').innerHTML = `<tr><td colspan="3">Error: ${err}</td></tr>`;
-  });
 }
 </script>
 
